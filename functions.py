@@ -1,44 +1,75 @@
 import os
 import time
+import pyglet
+import pygame
 from .song import songs
 from .history import ListeningHistory
 from .mood_map import mood_map
+import threading
+
+# Initialize pyglet player
+player = pyglet.media.Player()
+player.volume = 1.0  # Default volume
+
+# Initialize pygame for event handling
+pygame.init()
 
 # Initialize the listening history
 listening_history = ListeningHistory()
 
 def clear_screen():
-    """Clear the terminal screen based on the OS"""
+    """Clear the terminal screen based on the OS."""
     os.system('cls' if os.name == 'nt' else 'clear')
-
 def play_song(user, song_title):
     """
     Play a song for the user and add it to their listening history.
-
+    
     Parameters:
         user (User): The logged-in user.
         song_title (str): The title of the song to be played.
     """
-    found = False
+    try:
+        found = False
 
-    # Check if the song title exists in the song list
-    for song in songs:
-        if song.title == song_title:
-            print(f"Now Playing: {song.title} by {song.artist}")
-            print("Press Enter to stop and return to the menu.")
-            user.add_to_history(song_title)  # Add to the user's history
-            found = True
-            break
+        # Check if the song title exists in the song list
+        for song in songs:
+            if song.title == song_title:
+                found = True
+                print(f"Now Playing: {song.title} by {song.artist}")
+                print("Press Enter to stop and return to the menu.")
 
-    if not found:
-        print("Song not found.")
-        return
+                user.add_to_history(song_title)  # Add to the user's history
 
-    # Wait for the user to press Enter to stop the song and return to the menu
-    input()  # Wait for the user to press Enter
+                # Check if the file exists
+                if os.path.isfile(song.filepath):
+                    # Load the song file using pyglet
+                    source = pyglet.media.load(song.filepath)
+                    player.queue(source)
+                    player.play()
 
+                    # Wait for the user to press Enter to stop the song
+                    input("Press Enter to stop and return to the menu.")
+                    
+                    # Stop the song
+                    player.pause()
+                    print("Stopping the song and returning to the menu...")
+
+                else:
+                    print("Song file not found. Playing without audio.")
+                break  # Exit the loop after the song is found and played
+
+        if not found:
+            print("Song not found.")
+            return  # Exit the function if the song wasn't found
+
+    except Exception as e:
+        # Handle any exception that occurs
+        print(f"An error occurred: {str(e)}")
+
+    # Wait for the user to press Enter before returning to the main menu
     print("Returning to the menu...\n")
-
+    time.sleep(1)  # Optional: sleep for a short time to avoid rapid menu transition
+    
 def recommend_by_artist(user):
     """
     Recommend songs by a specific artist.
